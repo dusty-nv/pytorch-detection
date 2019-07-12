@@ -7,11 +7,12 @@ from PIL import Image
 class FaceDataset(Dataset):
 	"""FDDB (http://vis-www.cs.umass.edu/fddb/)"""
 
-	def __init__(self, annotations, root_dir, transform=None):
+	def __init__(self, root_dir, fold_dir, fold_range, transform=None):
 		"""
 		Args:
-			annotations (string): Path to the text file with annotations.
 			root_dir (string): Directory with all the images.
+			fold_dir (string): Directory with the annotation folds.
+			fold_range (range): Range of annotation folds to load.
 			transform (callable, optional): Optional transform to be applied
 				on a sample.
 		"""
@@ -19,30 +20,32 @@ class FaceDataset(Dataset):
 		self.transform = transform
 		self.annotations = []
 		
-		file = open(annotations, 'r')
+		for f in fold_range:
+			file = open(os.path.join(fold_dir, "FDDB-fold-{:02d}-ellipseList.txt".format(f)), 'r')
 		
-		while True:
-			img_name = file.readline()
+			while True:
+				img_name = file.readline()
 			
-			if not img_name:
-				break
+				if not img_name:
+					break
 				
-			img_name = img_name.rstrip() + ".jpg"
-			#print('img_name = ' + img_name)
+				img_name = img_name.rstrip() + ".jpg"
+				#print('img_name = ' + img_name)
 			
-			num_faces = int(file.readline())
-			#print('num_faces = {:d}'.format(num_faces))
+				num_faces = int(file.readline())
+				#print('num_faces = {:d}'.format(num_faces))
 			
-			for n in range(num_faces):
-				face_str = file.readline().rstrip().split(' ')
-				#print(face_str)
+				for n in range(num_faces):
+					face_str = file.readline().rstrip().split(' ')
+					#print(face_str)
 				
-				if num_faces == 1:
-					self.annotations.append((img_name, float(face_str[3]), float(face_str[4])))
+					if num_faces == 1:
+						self.annotations.append((img_name, float(face_str[3]), float(face_str[4])))
 			
-		file.close()
+			file.close()
 		
-			
+	def output_dims(self):
+		return 2	# x and y
 			
 	def __len__(self):
 		return len(self.annotations)
@@ -52,10 +55,17 @@ class FaceDataset(Dataset):
 		
 		img = load_image(os.path.join(self.root_dir, img_name))
 
+		width = img.width
+		height = img.height
+
 		if self.transform is not None:
 			img = self.transform(img)
 
+		x = 2.0 * (x / width - 0.5) # -1 left, +1 right
+		y = 2.0 * (y / height - 0.5) # -1 top, +1 bottom
+
 		return img, torch.Tensor([x, y])
+
 		
 		
 def load_image(path):
