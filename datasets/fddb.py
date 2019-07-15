@@ -55,15 +55,25 @@ class FaceDataset(Dataset):
 		
 		img = load_image(os.path.join(self.root_dir, img_name))
 
-		width = img.width
-		height = img.height
+		org_width = img.width
+		org_height = img.height
 
 		if self.transform is not None:
 			img = self.transform(img)
+			
+		width = img.size()[2]
+		height = img.size()[1]
 
+		scale_width = float(width) / float(org_width)
+		scale_height = float(height) / float(org_height)
+
+		x = float(x) * scale_width
+		y = float(y) * scale_height
+	
 		x = 2.0 * (x / width - 0.5) # -1 left, +1 right
 		y = 2.0 * (y / height - 0.5) # -1 top, +1 bottom
 
+		#print('original size:  {:d}x{:d}   transformed size:  {:d}x{:d}   scale factor:  {:f}x{:f}'.format(org_width, org_height, width, height, scale_width, scale_height))
 		return img, torch.Tensor([x, y])
 
 		

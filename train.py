@@ -162,7 +162,7 @@ def main_worker(gpu, ngpus_per_node, args):
     train_dataset = FaceDataset(
         root_dir='../originalPics',
         fold_dir='../FDDB-folds',
-        fold_range=range(1,10),
+        fold_range=range(1,11),
         transform=transforms.Compose([
             transforms.Resize((args.resolution, args.resolution)),
             #transforms.RandomResizedCrop(args.resolution),
@@ -174,7 +174,7 @@ def main_worker(gpu, ngpus_per_node, args):
     val_dataset = FaceDataset(
         root_dir='../originalPics',
         fold_dir='../FDDB-folds',
-        fold_range=range(10,11),
+        fold_range=range(1,11),
         transform=transforms.Compose([
             transforms.Resize((args.resolution, args.resolution)),
             #transforms.Resize(256),
@@ -406,8 +406,8 @@ def validate(val_loader, model, criterion, output_dims, args):
             if i % args.print_freq == 0:
                 progress.display(i)
 
-        # TODO: this should also be done with the ProgressMeter
         #print(' * Acc {top1.avg:.3f}'.format(top1=top1))
+        print(' * Avg Loss {:.4e}'.format(losses.avg))
 
     #return top1.avg
     return losses.avg

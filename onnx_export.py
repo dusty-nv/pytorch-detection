@@ -18,7 +18,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--input', type=str, default='model_best.pth.tar', help="path to input PyTorch model (default: model_best.pth.tar)")
 parser.add_argument('--output', type=str, default='', help="desired path of converted ONNX model (default: <ARCH>.onnx)")
 parser.add_argument('--model-dir', type=str, default='', help="directory to look for the input PyTorch model in, and export the converted ONNX model to (if --output doesn't specify a directory)")
-parser.add_argument('--no-softmax', type=bool, default=False, help="disable adding nn.Softmax layer to model (default is to add Softmax)")
+parser.add_argument('--no-softmax', action='store_true', help="disable adding nn.Softmax layer to model (default is to add Softmax)")
 
 opt = parser.parse_args() 
 print(opt)
@@ -42,7 +42,7 @@ print('using model:  ' + arch)
 model = models.__dict__[arch](pretrained=True)
 
 # reshape the model's output
-model = reshape_model(model, arch, checkpoint['num_classes'])
+model = reshape_model(model, arch, checkpoint['output_dims'])
 
 # load the model weights
 model.load_state_dict(checkpoint['state_dict'])
