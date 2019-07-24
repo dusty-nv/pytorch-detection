@@ -1,4 +1,5 @@
 import os
+import math
 import torch
 
 from torch.utils.data import Dataset, DataLoader
@@ -39,45 +40,73 @@ class FaceDataset(Dataset):
 					face_str = file.readline().rstrip().split(' ')
 					#print(face_str)
 				
-					if num_faces == 1:
-						self.annotations.append((img_name, float(face_str[3]), float(face_str[4])))
+					if num_faces != 1:
+						continue
+
+					# <major_axis_radius minor_axis_radius angle center_x center_y 1>
+					radius_major = float(face_str[0])
+					radius_minor = float(face_str[1])
+
+					angle = float(face_str[2])
+
+					center_x = float(face_str[3])
+					center_y = float(face_str[4])
+
+					# compute bounding-box of ellipse (https://stackoverflow.com/a/14163413)
+					ux = radius_major * math.cos(angle);
+					uy = radius_major * math.sin(angle);
+					vx = radius_minor * math.cos(angle + math.pi * 0.5);
+					vy = radius_minor * math.sin(angle + math.pi * 0.5);
+
+					bbox_halfwidth = math.sqrt(ux*ux + vx*vx);
+					bbox_halfheight = math.sqrt(uy*uy + vy*vy); 
+
+					bbox_left = center_x - bbox_halfwidth
+					bbox_right = center_x + bbox_halfwidth
+
+					bbox_top = center_y - bbox_halfheight
+					bbox_bottom = center_y + bbox_halfheight
+
+					#print('{:s}  ({:f}, {:f}) ({:f}, {:f})'.format(img_name, bbox_left, bbox_top, bbox_right, bbox_bottom))
+					self.annotations.append((img_name, bbox_left, bbox_top, bbox_right, bbox_bottom))
 			
 			file.close()
 		
 	def output_dims(self):
-		return 2	# x and y
+		return 4	# bbox left, top, right, bottom
 			
 	def __len__(self):
 		return len(self.annotations)
 
 	def __getitem__(self, idx):
-		img_name, x, y = self.annotations[idx]
+		img_name, left, top, right, bottom = self.annotations[idx]
 		
 		img = load_image(os.path.join(self.root_dir, img_name))
 
-		org_width = img.width
-		org_height = img.height
+		org_width = float(img.width)
+		org_height = float(img.height)
 
 		if self.transform is not None:
 			img = self.transform(img)
 			
-		width = img.size()[2]
-		height = img.size()[1]
+		width = float(img.size()[2])
+		height = float(img.size()[1])
 
-		scale_width = float(width) / float(org_width)
-		scale_height = float(height) / float(org_height)
-
-		x = float(x) * scale_width
-		y = float(y) * scale_height
-	
-		x = 2.0 * (x / width - 0.5) # -1 left, +1 right
-		y = 2.0 * (y / height - 0.5) # -1 top, +1 bottom
+		left = normalize(left, org_width, width)
+		right = normalize(right, org_width, width)
+		top = normalize(top, org_height, height)
+		bottom = normalize(bottom, org_height, height)
 
 		#print('original size:  {:d}x{:d}   transformed size:  {:d}x{:d}   scale factor:  {:f}x{:f}'.format(org_width, org_height, width, height, scale_width, scale_height))
-		return img, torch.Tensor([x, y])
+		return img, torch.Tensor([left, top, right, bottom])
 
+
+def normalize(coord, original_dim, rescaled_dim):
+	scale = rescaled_dim / original_dim
+	coord = coord * scale
+	return 2.0 * (coord / rescaled_dim - 0.5)	
 		
-		
+
 def load_image(path):
     # open path as file to avoid ResourceWarning (https://github.com/python-pillow/Pillow/issues/835)
     with open(path, 'rb') as f:
