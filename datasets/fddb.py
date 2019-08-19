@@ -92,13 +92,17 @@ class FaceDataset(Dataset):
 		width = float(img.size()[2])
 		height = float(img.size()[1])
 
+		bbox_width = (right - left) / org_width
+		bbox_height = (bottom - top) / org_height
+
 		left = normalize(left, org_width, width)
 		right = normalize(right, org_width, width)
 		top = normalize(top, org_height, height)
 		bottom = normalize(bottom, org_height, height)
 
 		#print('original size:  {:d}x{:d}   transformed size:  {:d}x{:d}   scale factor:  {:f}x{:f}'.format(org_width, org_height, width, height, scale_width, scale_height))
-		return img, torch.Tensor([left, top, right, bottom])
+		#return img, torch.Tensor([left, top, right, bottom])
+		return img, torch.Tensor([left, bbox_width, top, bbox_height])
 
 
 def normalize(coord, original_dim, rescaled_dim):
